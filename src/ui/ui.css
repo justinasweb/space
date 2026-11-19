@@ -10,7 +10,8 @@
 [data-theme='space'] {
   --ui-font: 'Inter', 'Helvetica Neue', Helvetica, 'Segoe UI', Roboto, Arial, sans-serif;
   --ui-size: 13px;          /* title, body */
-  --ui-size-small: 11px;    /* labels, hint, message */
+  --ui-size-small: 11px;    /* labels */
+  --ui-size-centre: 14px;   /* hint and message, bottom centre */
   --ui-track-title: 0.08em;
   --ui-track-body: 0.04em;
   --ui-track-label: 0.16em;
@@ -114,11 +115,12 @@
 .ui-centre {
   position: absolute; left: 0; right: 0; bottom: max(30px, env(safe-area-inset-bottom));
   display: grid; justify-items: center; pointer-events: none;
-  font-size: var(--ui-size-small); line-height: 1; text-transform: lowercase;
+  font-size: var(--ui-size-centre); line-height: 1; text-transform: lowercase;
 }
 .ui-hint, .ui-message { grid-area: 1 / 1; opacity: 0; transition: opacity var(--ui-hint-fade) ease; user-select: none; -webkit-user-select: none; }
-.ui-hint { letter-spacing: var(--ui-track-whisper); }
-.ui-message { letter-spacing: var(--ui-track-label); color: var(--strong); }
+.ui-hint { letter-spacing: var(--ui-track-whisper); color: var(--strong); }
+.ui-message { letter-spacing: var(--ui-track-label); color: var(--hover); text-shadow: 0 0 12px rgba(0, 0, 0, 0.6); }
+.ui[data-tone='light'] .ui-message { text-shadow: none; }
 .ui.has-hint .ui-hint, .ui.has-message .ui-message { opacity: 1; }
 .ui.has-message .ui-hint { opacity: 0; transition-duration: 0.6s; }
 

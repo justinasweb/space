@@ -2,7 +2,7 @@
 export const site = {
   name: 'Justinas',
   links: [
-    { label: 'X', href: '' },       // e.g. https://x.com/yourname
-    { label: 'GitHub', href: '' },  // e.g. https://github.com/yourname
+    { label: 'X', href: 'https://x.com/JustinasDimsta' },
+    { label: 'GitHub', href: 'https://github.com/justinasweb' },
   ],
 };
