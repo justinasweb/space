@@ -31,4 +31,13 @@ export const experiences = [
     description: 'Hold to fly between the stars, let go to arrive somewhere new.',
     about: 'Floating still among the stars. Hold space, the mouse or a finger to accelerate; let go to coast to a stop somewhere new.',
   },
+  {
+    id: 'aurora',
+    title: 'Aurora',
+    path: '/aurora/',
+    theme: 'space',
+    collection: 'Space',
+    description: 'Stir the northern lights over a frozen lake.',
+    about: 'Night on a frozen world. Hold space, the mouse or a finger to strengthen the solar wind; let go and the storm settles.',
+  },
 ];
