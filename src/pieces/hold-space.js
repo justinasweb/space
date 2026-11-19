@@ -16,7 +16,7 @@
    Debug query flags (for testing only):
      ?seed=42        fix the per-visit seed
      ?dest=nebula    open at, and always arrive at, one destination type
-                     (star | binary | cluster | nebula | blackhole | galaxy)
+                     (star | comet | binary | cluster | pulsar | nebula | ringnebula | blackhole | galaxy)
      ?speed=0.8      lock the throttle at a value in [0,1] (regime preview)
      ?fps            record frame rate in window.__holdSpace.samples
      ?still          no idle camera sway
@@ -93,10 +93,14 @@ const CONFIG = {
   destinations: {
     // hop distance below ladder[i] picks tier i; beyond the last: the galaxy from outside
     ladder: [40, 4000, 60000, 600000],
-    tiers: [['star'], ['binary', 'cluster'], ['nebula'], ['blackhole'], ['galaxy']],
+    tiers: [['star', 'star', 'comet'], ['binary', 'cluster', 'pulsar'], ['nebula', 'ringnebula'], ['blackhole'], ['galaxy']],
+    wander: 0.3,                 // chance a hop lands one tier nearer or further than its distance says
+    repeat: 0.15,                // chance the same kind of place is allowed twice in a row
     home: 'star',                // what the page opens on
     nebulaSteps: { desktop: 48, mobile: 28 },
     clusterStars: { desktop: 7000, mobile: 3500 },
+    cometDust: { desktop: 16000, mobile: 7000 },
+    ringNebula: { desktop: 42000, mobile: 18000 },
     galaxyStars: { desktop: 150000, mobile: 60000 },
   },
 
@@ -706,20 +710,32 @@ function start() {
   }
 
   // ---- a lone sun with a planet or two ----
+  // Star classes: [temperature range K, size, brightness, glow size, glow gain]. Each visit draws one, never the last one twice.
+  const STAR_CLASSES = [
+    { K: [2700, 3500], size: 0.6, I: 11, glow: 26, gain: 0.26 },    // red dwarf
+    { K: [3900, 5000], size: 1.0, I: 14, glow: 30, gain: 0.22 },    // orange
+    { K: [5300, 6300], size: 1.0, I: 14, glow: 30, gain: 0.22 },    // sun-like
+    { K: [7200, 9800], size: 1.15, I: 15, glow: 34, gain: 0.24 },   // white
+    { K: [14000, 26000], size: 1.6, I: 18, glow: 42, gain: 0.3 },   // blue giant
+    { K: [3000, 3700], size: 2.4, I: 10, glow: 24, gain: 0.2 },     // red giant: huge, dim, swollen
+  ];
   kind('star', (p) => {
-    const sun = makeSun(), p1 = makePlanet(), p2 = makePlanet();
-    p.group.add(sun.group, p1.group, p2.group);
-    let two = false;
+    const sun = makeSun(), p1 = makePlanet(), p2 = makePlanet(), moon = makePlanet();
+    p.group.add(sun.group, p1.group, p2.group, moon.group);
+    let two = false, hasMoon = false, lastClass = -1, lastType = -1;
+    const otherThan = (rng, n, not) => { let v = (rng() * n) | 0; if (v === not) v = (v + 1 + ((rng() * (n - 1)) | 0)) % n; return v; };
     p.roll = (rng, f) => {
-      const K = 3300 + 7200 * Math.pow(rng(), 1.6), side = rng() < 0.7 ? 1 : -1;
-      const sd = pick(rng, 26, 40), k = sd / 20, sr = pick(rng, 0.45, 0.95) * k;
+      const ci = otherThan(rng, STAR_CLASSES.length, lastClass), C = STAR_CLASSES[ci]; lastClass = ci;
+      const K = pick(rng, C.K[0], C.K[1]), side = rng() < 0.7 ? 1 : -1;
+      const sd = pick(rng, 26, 40), k = sd / 20, sr = pick(rng, 0.45, 0.95) * k * C.size;
       sun.group.position.copy(f.at(side * pick(rng, 0.12, 0.5), pick(rng, -0.02, 0.36), sd));
-      sun.set(K, sr);
+      sun.set(K, sr, C.I, C.glow, C.gain);
       const c = starColor(K, 0.5), L = 1.7, light = [c[0] * L, c[1] * L, c[2] * L];
       // the near planet: large in frame, mostly night side, a lit crescent towards the sun
       const dist = pick(rng, 7, 11);
       p1.group.position.copy(f.at(-side * pick(rng, 0.22, 0.52), pick(rng, -0.34, 0.06), dist));
-      p1.set(rng, (rng() * 5) | 0, pick(rng, 0.22, 0.46) * dist / 3, light);
+      const t1 = otherThan(rng, 5, lastType); lastType = t1;
+      p1.set(rng, t1, pick(rng, 0.22, 0.46) * dist / 3, light);
       two = rng() < 0.6; p2.group.visible = two;
       p.bounds = [[...sun.group.position, sr * 15], [...p1.group.position, p1.reach * 2]];
       if (two) {
@@ -727,10 +743,18 @@ function start() {
         p2.set(rng, (rng() * 5) | 0, pick(rng, 0.12, 0.3) * k, light);
         p.bounds.push([...p2.group.position, p2.reach * 2]);
       }
+      // sometimes a small moon hangs beside the near planet
+      hasMoon = rng() < 0.5; moon.group.visible = hasMoon;
+      if (hasMoon) {
+        const r1 = p1.group.scale.x;
+        moon.group.position.copy(p1.group.position).add(vW.set(pick(rng, 1.6, 2.6) * sign(rng), pick(rng, 0.2, 1.1), pick(rng, 0.5, 2.2)).multiplyScalar(r1 * 1.4));
+        moon.set(rng, rng() < 0.6 ? 0 : 4, r1 * pick(rng, 0.12, 0.24), light);
+        p.bounds.push([...moon.group.position, moon.reach * 2]);
+      }
       p.focus = 0; p.core = sr;
     };
     const sw = new THREE.Vector3();
-    p.update = (t, camQ) => { sun.face(camQ); sun.group.getWorldPosition(sw); p1.update(sw, t); if (two) p2.update(sw, t); };
+    p.update = (t, camQ) => { sun.face(camQ); sun.group.getWorldPosition(sw); p1.update(sw, t); if (two) p2.update(sw, t); if (hasMoon) moon.update(sw, t); };
   });
 
   // ---- a binary pair, slowly circling, sometimes inside a faint dust ring ----
@@ -806,6 +830,191 @@ function start() {
       p.bounds = [[...pts.position, a * 4]]; p.focus = 0; p.core = a;
     };
     p.update = () => {};
+  });
+
+
+  // A soft round glow that always faces the camera (comet comae, pulsar wind).
+  function makeGlow(order = 4) {
+    const u = { uCol: { value: new THREE.Vector3(1, 1, 1) }, uI: { value: 1 }, uSharp: { value: 6 } };
+    const m = new THREE.Mesh(planeGeo, new THREE.ShaderMaterial({
+      ...ADD, depthTest: true, uniforms: u,
+      vertexShader: /* glsl */`varying vec2 vQ; void main(){ vQ = position.xy * 2.; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }`,
+      fragmentShader: /* glsl */`
+        varying vec2 vQ; uniform vec3 uCol; uniform float uI, uSharp;
+        void main(){
+          float d = length(vQ); if (d >= 1.) discard;
+          float px = length(fwidth(vQ)), w = max(1. / (uSharp * uSharp), px * px * 1.6);
+          float core = exp(-d * d / w) / (uSharp * uSharp * w), halo = (1. - d) * (1. - d) / (1. + d * d * uSharp * 4.);
+          gl_FragColor = vec4(uCol * uI * (core + .35 * halo), 1.);
+        }`,
+    }));
+    m.renderOrder = order;
+    return { mesh: m, u, face(camQ) { m.parent.getWorldQuaternion(qW); m.quaternion.copy(qW.invert().multiply(camQ)); } };
+  }
+  const GAUSS2 = /* glsl */`vec2 gauss2(float a, float b){ float r = sqrt(-2. * log(max(a, 1e-4))); return r * vec2(cos(6.2831853 * b), sin(6.2831853 * b)); }`;
+  const ORIGIN = new THREE.Vector3(1, 0, 0);
+
+  // ---- a comet: a bright head, a straight blue ion tail and a curved dust tail, pointing away from its star ----
+  kind('comet', (p) => {
+    const sun = makeSun(), coma = makeGlow(5);
+    const tail = new THREE.Group();                                    // local +x points away from the star
+    const tu = { uTime: U.time, uPx: U.pxScale, uDpr: U.dpr, uL: { value: 24 }, uW: { value: 1 }, uBend: { value: 0.18 },
+      uIon: { value: new THREE.Vector3() }, uDust: { value: new THREE.Vector3() }, uO: p.o };
+    const ion = cloud(MOBILE ? 5000 : 10000, /* glsl */`
+      attribute vec4 aA, aB; uniform float uTime, uPx, uDpr, uL, uW, uO; uniform vec3 uIon; varying vec3 vCol;
+      ${GAUSS2}
+      void main(){
+        float u = fract(aA.x + uTime * .03);                          // gas streams away from the head
+        float ray = floor(aA.z * 6.), ang = ray * 1.07 + uTime * .05;
+        vec2 g = gauss2(aB.x, aB.y);
+        float w = uW * (.08 + .5 * u);
+        vec3 p = vec3(uL * u, (g.x * .3 + sin(ang) * .55) * w, (g.y * .3 + cos(ang) * .55) * w);
+        p.y += sin(u * 7. - uTime * .35 + ray) * .035 * uL * u;          // slow kinks along the streamers
+        vec4 mv = modelViewMatrix * vec4(p, 1.);
+        gl_Position = projectionMatrix * mv;
+        float px = .028 * uPx / -mv.z, cl = clamp(px, 1.2 * uDpr, 3. * uDpr);
+        vCol = uIon * pow(1. - u, 1.6) * smoothstep(0., .02, u) * (.6 + .8 * aA.w) * min(1., px * px / (cl * cl)) * mix(.4, 1., uO); gl_PointSize = cl;
+      }`, tu, 6);
+    const dust = cloud(MOBILE ? DC.cometDust.mobile : DC.cometDust.desktop, /* glsl */`
+      attribute vec4 aA, aB; uniform float uTime, uPx, uDpr, uL, uW, uBend, uO; uniform vec3 uDust; varying vec3 vCol;
+      ${GAUSS2}
+      void main(){
+        float u = fract(aB.w + uTime * .008);                         // dust drifts slower, and falls behind the orbit
+        vec2 g = gauss2(aA.y, aA.z);
+        float w = uW * (.12 + 1.5 * u);
+        vec3 p = vec3(uL * .72 * u, uBend * uL * u * u, 0.) + vec3(g.x * .25, g.y, (aB.z - .5) * .6) * w;
+        vec4 mv = modelViewMatrix * vec4(p, 1.);
+        gl_Position = projectionMatrix * mv;
+        float px = .04 * uPx / -mv.z, cl = clamp(px, 1.3 * uDpr, 4. * uDpr);
+        vCol = uDust * pow(1. - u, 1.3) * smoothstep(0., .03, u) * (.5 + aA.x) * min(1., px * px / (cl * cl)) * mix(.4, 1., uO); gl_PointSize = cl;
+      }`, tu, 6);
+    tail.add(ion, dust);
+    p.group.add(sun.group, coma.mesh, tail);
+    const dir = new THREE.Vector3(), qRoll = new THREE.Quaternion();
+    p.roll = (rng, f) => {
+      const side = sign(rng), d = pick(rng, 8, 12) * f.wide;
+      coma.mesh.position.copy(f.at(side * pick(rng, 0.05, 0.35), pick(rng, -0.05, 0.25), d));
+      // the star sits off to the side, about as far away as the comet: the tails sweep across the view
+      sun.group.position.copy(coma.mesh.position).add(vW.set(side * pick(rng, 30, 46), pick(rng, -8, 10), pick(rng, -14, 6)));
+      const K = pick(rng, 4800, 7000); sun.set(K, pick(rng, 0.5, 0.9), 14, 34, 0.24);
+      dir.copy(coma.mesh.position).sub(sun.group.position).normalize();
+      tail.position.copy(coma.mesh.position);
+      tail.quaternion.setFromUnitVectors(ORIGIN, dir).multiply(qRoll.setFromAxisAngle(ORIGIN, rng() * TAU));
+      const L = pick(rng, 18, 30), green = rng() < 0.4;                   // some comae glow green with carbon
+      tu.uL.value = L; tu.uW.value = pick(rng, 1.1, 1.7); tu.uBend.value = pick(rng, 0.08, 0.3);
+      tu.uIon.value.set(0.10, 0.20, 0.45).multiplyScalar(pick(rng, 1.3, 1.8));
+      tu.uDust.value.set(0.30, 0.26, 0.20).multiplyScalar(pick(rng, 0.6, 0.9));
+      coma.u.uCol.value.set(...(green ? [0.55, 1.0, 0.7] : [0.8, 0.9, 1.0])); coma.u.uI.value = pick(rng, 1.2, 1.8); coma.u.uSharp.value = 7;
+      coma.mesh.scale.setScalar(pick(rng, 2.2, 3.2));
+      vW.copy(coma.mesh.position).addScaledVector(dir, L * 0.45);
+      p.bounds = [[...coma.mesh.position, 2.5], [vW.x, vW.y, vW.z, L * 0.3]]; p.focus = 0; p.core = 1.2;
+    };
+    p.update = (t, camQ) => { sun.face(camQ); coma.face(camQ); };
+  });
+
+  // ---- a pulsar: a tiny, furious star sweeping two beams through its own wind ----
+  kind('pulsar', (p) => {
+    const star = makeSun(), wind = makeGlow(3);
+    const spin = new THREE.Group(), tilt = new THREE.Group(); spin.add(tilt);   // spin axis = local y; beams along tilt's y
+    const bu = { uTime: U.time, uPx: U.pxScale, uDpr: U.dpr, uL: { value: 14 }, uW: { value: 0.06 }, uCol: { value: new THREE.Vector3() }, uO: p.o };
+    const beams = cloud(MOBILE ? 6000 : 12000, /* glsl */`
+      attribute vec4 aA, aB; uniform float uTime, uPx, uDpr, uL, uW, uO; uniform vec3 uCol; varying vec3 vCol;
+      ${GAUSS2}
+      void main(){
+        float s = aB.x < .5 ? -1. : 1.;
+        float u = fract(aA.x + uTime * .22);                          // particles race out along both beams
+        float r = uL * u;
+        vec2 g = gauss2(aB.y, aB.z);
+        vec3 p = vec3(g.x * uW * (.2 + r), s * r, g.y * uW * (.2 + r));
+        vec4 mv = modelViewMatrix * vec4(p, 1.);
+        gl_Position = projectionMatrix * mv;
+        float px = .03 * uPx / -mv.z, cl = clamp(px, 1.2 * uDpr, 3. * uDpr);
+        vCol = uCol * pow(1. - u, 2.) * (.4 + aA.w) * min(1., px * px / (cl * cl)) * mix(.4, 1., uO); gl_PointSize = cl;
+      }`, bu, 6);
+    tilt.add(beams);
+    const ru = { uTime: U.time, uPx: U.pxScale, uDpr: U.dpr, uR: { value: 2 }, uCol: { value: new THREE.Vector3() }, uO: p.o };
+    const torus = cloud(MOBILE ? 5000 : 10000, /* glsl */`
+      attribute vec4 aA, aB; uniform float uTime, uPx, uDpr, uR, uO; uniform vec3 uCol; varying vec3 vCol;
+      ${GAUSS2}
+      void main(){                                                     // the wind piles up in a ring around the equator
+        vec2 g = gauss2(aA.x, aA.y);
+        float th = aA.z * 6.2831853 + uTime * .05, r = uR * (1. + .16 * g.x);
+        vec3 p = vec3(r * cos(th), g.y * .08 * uR + (aB.w - .5) * .1 * uR, r * sin(th));
+        vec4 mv = modelViewMatrix * vec4(p, 1.);
+        gl_Position = projectionMatrix * mv;
+        float px = .03 * uPx / -mv.z, cl = clamp(px, 1.2 * uDpr, 3. * uDpr);
+        vCol = uCol * (.3 + aB.z) * min(1., px * px / (cl * cl)) * mix(.4, 1., uO); gl_PointSize = cl;
+      }`, ru, 6);
+    spin.add(torus, star.group);
+    p.group.add(spin, wind.mesh);
+    let rate = 3, base = 30, gainBase = 0.3;
+    const axisW = new THREE.Vector3(), posW = new THREE.Vector3();
+    p.roll = (rng, f) => {
+      spin.position.copy(f.at(pick(rng, -0.25, 0.35), pick(rng, -0.02, 0.24), pick(rng, 14, 22) * f.wide));
+      wind.mesh.position.copy(spin.position);
+      spin.rotation.set(pick(rng, 0.25, 0.7) * sign(rng), rng() * TAU, pick(rng, -0.5, 0.5));
+      tilt.rotation.z = pick(rng, 0.35, 0.75);                         // beams lean off the spin axis, so they sweep a cone
+      rate = TAU / pick(rng, 2.2, 4.5);
+      bu.uL.value = pick(rng, 11, 17); bu.uW.value = pick(rng, 0.04, 0.07);
+      const violet = rng() < 0.5; bu.uCol.value.set(...(violet ? [0.30, 0.28, 0.75] : [0.22, 0.42, 0.75])).multiplyScalar(0.6);
+      ru.uR.value = pick(rng, 1.6, 2.6); ru.uCol.value.set(0.05, 0.09, 0.2);
+      base = pick(rng, 26, 34); gainBase = 0.3; star.set(pick(rng, 26000, 40000), 0.1, base, 70, gainBase);
+      wind.u.uCol.value.set(0.35, 0.5, 1.0); wind.u.uI.value = 0.35; wind.u.uSharp.value = 3; wind.mesh.scale.setScalar(ru.uR.value * 3.2);
+      p.bounds = [[...spin.position, bu.uL.value * 0.8]]; p.focus = 0; p.core = ru.uR.value;
+    };
+    p.update = (t, camQ) => {
+      spin.rotation.y = (t * rate) % TAU;
+      star.face(camQ); wind.face(camQ);
+      // when a beam swings past the eye, the star flashes
+      tilt.updateWorldMatrix(true, false);
+      axisW.set(0, 1, 0).applyQuaternion(tilt.getWorldQuaternion(qW));
+      star.group.getWorldPosition(posW).normalize();
+      const c = Math.abs(axisW.dot(posW)), flash = Math.pow(c, 60) * 5;
+      star.gu.uI.value = base * gainBase * (1 + flash);
+    };
+  });
+
+  // ---- a ring nebula: the shell a dying star has blown off, seen almost down its axis ----
+  kind('ringnebula', (p) => {
+    const core = makeSun();
+    const nu = { uTime: U.time, uPx: U.pxScale, uDpr: U.dpr, uR: { value: 3.5 }, uWaist: { value: 0.6 }, uEl: { value: 1.4 }, uSeed: { value: 0 },
+      uIn: { value: new THREE.Vector3() }, uOut: { value: new THREE.Vector3() }, uHalo: { value: new THREE.Vector3() }, uO: p.o };
+    const shell = cloud(MOBILE ? DC.ringNebula.mobile : DC.ringNebula.desktop, /* glsl */`
+      attribute vec4 aA, aB; uniform float uTime, uPx, uDpr, uR, uWaist, uEl, uSeed, uO; uniform vec3 uIn, uOut, uHalo; varying vec3 vCol;
+      ${GAUSS2}
+      void main(){
+        float z = aA.y * 2. - 1.; z = mix(z, z * z * z, uWaist);      // gas crowds towards the waist: from the pole it reads as a ring
+        float ph = aA.z * 6.2831853, s = sqrt(1. - z * z);
+        vec2 g = gauss2(aA.x, aA.w);
+        float lump = 1. + .07 * sin(ph * 5. + z * 7. + uSeed) * sin(ph * 3. - z * 4. + uSeed * 1.7) + .04 * sin(ph * 17. + uSeed);
+        float halo = step(aB.y, .16);
+        float r = uR * lump * (1. + .085 * g.x) * mix(1., 1.6 + .7 * aB.z, halo);
+        vec3 p = r * vec3(s * cos(ph + uTime * .004), z * uEl, s * sin(ph + uTime * .004));
+        vec4 mv = modelViewMatrix * vec4(p, 1.);
+        gl_Position = projectionMatrix * mv;
+        float k = smoothstep(.88, 1.12, r / (uR * lump));             // oxygen glows inside, hydrogen at the rim
+        vec3 col = mix(mix(uIn, uOut, k), uHalo, halo);
+        float px = .06 * uPx / -mv.z, cl = clamp(px, 1.3 * uDpr, 4.5 * uDpr);
+        vCol = col * (.4 + aB.x) * min(1., px * px / (cl * cl)) * mix(.4, 1., uO); gl_PointSize = cl;
+      }`, nu, 6);
+    const body = new THREE.Group(); body.add(shell, core.group);
+    p.group.add(body);
+    const PALS = [
+      { in: [0.06, 0.20, 0.20], out: [0.30, 0.06, 0.05], halo: [0.06, 0.012, 0.012] },   // teal heart, red rim
+      { in: [0.10, 0.16, 0.26], out: [0.26, 0.08, 0.16], halo: [0.04, 0.02, 0.05] },     // blue heart, magenta rim
+      { in: [0.16, 0.20, 0.10], out: [0.28, 0.12, 0.04], halo: [0.05, 0.025, 0.01] },    // green-gold
+    ];
+    p.roll = (rng, f) => {
+      const R = pick(rng, 2.8, 4.2);
+      body.position.copy(f.at(pick(rng, -0.25, 0.35), pick(rng, -0.02, 0.24), R * pick(rng, 4.2, 5.6) * f.wide));
+      body.rotation.set(Math.PI / 2 + pick(rng, -0.55, 0.55), rng() * TAU, pick(rng, -0.4, 0.4));
+      nu.uR.value = R; nu.uWaist.value = pick(rng, 0.4, 0.85); nu.uEl.value = pick(rng, 1.1, 1.8); nu.uSeed.value = rng() * 50;
+      const P = PALS[(rng() * PALS.length) | 0], g = pick(rng, 0.8, 1.15);
+      nu.uIn.value.set(...P.in).multiplyScalar(g); nu.uOut.value.set(...P.out).multiplyScalar(g); nu.uHalo.value.set(...P.halo);
+      core.set(pick(rng, 30000, 45000), 0.05, 24, 40, 0.3);
+      p.bounds = [[...body.position, R * 2.6]]; p.focus = 0; p.core = R;
+    };
+    p.update = (t, camQ) => { core.face(camQ); };
   });
 
   // ---- an emission nebula: marched through 3D noise at half resolution ----
@@ -1301,9 +1510,16 @@ function start() {
   }
   /** Stand it in the world, at the position and heading the camera will have at rest there. */
   function stand(p, pos, q) { p.anchor.pos.copy(pos); p.anchor.q.copy(q); p.live = true; }
+  /** The kind of place a hop of `ly` light-years lands at: its tier, sometimes a neighbour's, rarely the same kind as here. */
   function tierFor(ly, rng) {
-    const L = DC.ladder; let i = 0; while (i < L.length && ly >= L[i]) i++;
-    const t = DC.tiers[i]; return t[(rng() * t.length) | 0];
+    const L = DC.ladder, T = DC.tiers, last = J.here && J.here.name;
+    let i = 0; while (i < L.length && ly >= L[i]) i++;
+    if (rng() < DC.wander) i = clamp(i + (rng() < 0.5 ? -1 : 1), 0, T.length - 1);
+    const fresh = (tier) => tier.filter((k) => KINDS[k] && (k !== last || rng() < DC.repeat));
+    let opts = fresh(T[i]);
+    for (let d = 1; !opts.length && d < T.length; d++) opts = fresh(T[i - d] || []).concat(fresh(T[i + d] || []));
+    if (!opts.length) opts = T[i];
+    return opts[(rng() * opts.length) | 0];
   }
   /** Arrive somewhere immediately: the opening, warm-up, and tests. Nothing else stays in the world. */
   function arriveNow(type, inst = 0) {
