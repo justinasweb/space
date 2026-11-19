@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en" data-theme="space">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>Cursor light · Justinas</title>
+<meta name="description" content="Carry the sun with your cursor and let the planets eclipse it. A WebGL piece by Justinas.">
+<meta property="og:title" content="Cursor light · Justinas">
+<meta property="og:description" content="Carry the sun with your cursor and let the planets eclipse it. A WebGL piece by Justinas.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  /* The page without WebGL *is* the fallback: a calm, static dark field with the text.
+     When WebGL starts, the canvas simply covers it. */
+  html, body { height: 100%; margin: 0; }
+  body {
+    background:
+      radial-gradient(ellipse 60% 50% at 62% 38%, rgba(255, 236, 214, 0.045), transparent 70%),
+      radial-gradient(ellipse 120% 90% at 20% 110%, rgba(70, 90, 140, 0.06), transparent 60%),
+      #010103;
+    color: #fff;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  canvas#space {
+    position: fixed; inset: 0; width: 100%; height: 100%;
+    display: block;
+    cursor: none;            /* the sun replaces the cursor */
+    touch-action: none;      /* dragging moves the sun instead of scrolling */
+    -webkit-tap-highlight-color: transparent;
+  }
+</style>
+</head>
+<body>
+
+<script type="module" src="/src/pieces/cursor-light.js"></script>
+</body>
+</html>
