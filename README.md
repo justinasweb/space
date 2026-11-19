@@ -22,7 +22,7 @@ Old files in `assets/` can be deleted now and then; their names change with ever
 | Path | What it is |
 | --- | --- |
 | `index.html` | the root page: Born from white |
-| `cursor-light/index.html`, `hold-space/index.html` | the other pieces |
+| `cursor-light/`, `hold-space/`, `aurora/`, `falling-in/` (each an `index.html`) | the other pieces |
 | `src/pieces/*.js` | each piece's code (its CONFIG block is at the top) |
 | `src/experiences.js` | the list of pieces: order, titles, descriptions, about text |
 | `src/site.js` | your name and the X / GitHub links |
@@ -62,4 +62,4 @@ if (ui.isUiTarget(event)) return;          // in the piece's own pointer handler
 Keys: ← → move between rooms, Esc closes the room index. Space is left to the pieces.
 The UI dims to 16% after 3 seconds without input.
 
-Debug flags from the original concepts still work, e.g. `/?t=20`, `/hold-space/?dest=nebula`, `?nowebgl`, `?reduced`, `?fps`.
+Debug flags from the original concepts still work, e.g. `/?t=20`, `/hold-space/?dest=nebula`, `/falling-in/?r=3`, `?nowebgl`, `?reduced`, `?fps`.

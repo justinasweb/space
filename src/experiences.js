@@ -40,4 +40,13 @@ export const experiences = [
     description: 'Stir the northern lights over a frozen lake.',
     about: 'Night on a frozen world. Hold space, the mouse or a finger to strengthen the solar wind; let go and the storm settles.',
   },
+  {
+    id: 'falling-in',
+    title: 'Falling in',
+    path: '/falling-in/',
+    theme: 'space',
+    collection: 'Space',
+    description: 'Fall towards a black hole as the sky bends and your time slows.',
+    about: 'The light in every pixel is traced along its bent path around the hole. Hold space, the mouse or a finger to fall faster; near the end, look back up at the shrinking sky.',
+  },
 ];
