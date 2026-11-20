@@ -11,7 +11,9 @@
   --ui-font: 'Inter', 'Helvetica Neue', Helvetica, 'Segoe UI', Roboto, Arial, sans-serif;
   --ui-size: 13px;          /* title, body */
   --ui-size-small: 11px;    /* labels */
-  --ui-size-centre: 14px;   /* hint and message, bottom centre */
+  --ui-size-centre: 14px;   /* message, bottom centre */
+  --ui-size-hint: 15px;     /* hint, bottom centre */
+  --ui-hint-breathe: 3.2s;  /* one slow breath of the hint; far below any flashing rate */
   --ui-track-title: 0.08em;
   --ui-track-body: 0.04em;
   --ui-track-label: 0.16em;
@@ -118,7 +120,14 @@
   font-size: var(--ui-size-centre); line-height: 1; text-transform: lowercase;
 }
 .ui-hint, .ui-message { grid-area: 1 / 1; opacity: 0; transition: opacity var(--ui-hint-fade) ease; user-select: none; -webkit-user-select: none; }
-.ui-hint { letter-spacing: var(--ui-track-whisper); color: var(--strong); }
+.ui-hint {
+  font-size: var(--ui-size-hint); letter-spacing: var(--ui-track-whisper); color: var(--hover);
+  text-shadow: 0 0 14px rgba(0, 0, 0, 0.7), 0 0 3px rgba(0, 0, 0, 0.5);
+}
+.ui[data-tone='light'] .ui-hint { text-shadow: 0 0 14px rgba(255, 255, 255, 0.8); }
+/* a slow, soft breath while it is shown: draws the eye without blinking */
+.ui.has-hint .ui-hint { animation: ui-breathe var(--ui-hint-breathe) ease-in-out infinite; }
+@keyframes ui-breathe { 0%, 100% { color: var(--hover); } 50% { color: var(--ink); } }
 .ui-message { letter-spacing: var(--ui-track-label); color: var(--hover); text-shadow: 0 0 12px rgba(0, 0, 0, 0.6); }
 .ui[data-tone='light'] .ui-message { text-shadow: none; }
 .ui.has-hint .ui-hint, .ui.has-message .ui-message { opacity: 1; }
@@ -191,5 +200,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .ui, .ui *, .ui-index { transition-duration: 0s !important; }
+  .ui.has-hint .ui-hint { animation: none; }
   @view-transition { navigation: none; }
 }

@@ -29,7 +29,7 @@ const CONFIG = {
     rise: 2.2,            // seconds (time constant) to build while holding
     fall: 6.0,            // seconds (time constant) to settle after letting go
     breathe: 0.06,        // slow natural pulsing of the quiet level
-    timeBoost: 2.2,       // the curtains move this much faster at full storm
+    timeBoost: 0.8,       // the curtains move this much faster at full storm (kept low: fast flicker is hard on the eyes)
   },
   camera: {
     fov: 72,              // vertical, degrees
@@ -41,6 +41,7 @@ const CONFIG = {
   exposure: 2.0,
   message: { minKp: 5, show: 5.5 },   // after a storm at least this strong, say how strong it was
   hintAfter: 2.0,                     // seconds before "hold space" appears
+  hintAgain: 25,                      // seconds without holding before the hint comes back
   quality: {
     steps: { desktop: 64, mobile: 32 },          // altitude layers marched per pixel
     scale: { desktop: 1.0, mobile: 0.8 },        // render resolution vs. the screen
@@ -103,14 +104,14 @@ const FIELD_FRAG = /* glsl */`
       float z0 = -(8. + fk * 4.2) + s * (6.5 - fk * 1.2);           // quiet: low in the north; a storm brings them overhead
       float path = z0 + 1.9 * sin(x * .085 + t * .05 + fk * 2.1) + .8 * sin(x * .21 - t * .085 + fk * 4.)
                  + 3.2 * (fbm1(x * .045 + t * .016 + fk * 13. + uSeed) - .5) * (1. + 1.4 * s)
-                 + .25 * sin(x * .9 + t * .6 + fk * 3.) * s;           // small fast kinks when it is active
+                 + .25 * sin(x * .9 + t * .25 + fk * 3.) * s;           // small fast kinks when it is active
       float d = q.y - path, w = .12 + .15 * s;
       float band = exp(-d * d / (w * w));
       band += .15 * exp(-d * d / (w * w * 9.));                        // a soft skirt around the bright sheet
       // rays: fine vertical structure at three scales, drifting along the arc and pulsing
-      float r1 = n1(x * 1.3 + t * .22 + fk * 31.), r2 = n1(x * 4.1 - t * .55 + fk * 7.), r3 = n1(x * 11. + t * 1.3 + fk * 3.);
+      float r1 = n1(x * 1.3 + t * .12 + fk * 31.), r2 = n1(x * 4.1 - t * .22 + fk * 7.), r3 = n1(x * 11. + t * .3 + fk * 3.);
       float rays = .12 + .88 * pow(r1, 2.) * (.4 + .6 * r2) * (.65 + .35 * r3);
-      float pulse = .75 + .25 * sin(x * .35 - t * (1.2 + 2. * s) + fk * 2.);
+      float pulse = .88 + .12 * sin(x * .35 - t * (.45 + .35 * s) + fk * 2.);   // slow: no flashing
       float alive = smoothstep(.2, .65, n1(x * .05 + fk * 7. - t * .028 + uSeed) + s * .55);
       acc += band * rays * pulse * alive * (1. - fk * .25);
     }
@@ -288,7 +289,8 @@ function start() {
   const held = { key: false, pointers: new Set() };
   const holding = () => held.key || held.pointers.size > 0;
   let everHeld = false;
-  const onPress = () => { if (!everHeld) { everHeld = true; ui.showHint(false); } ui.message(null); };
+  let lastHeld = 0;
+  const onPress = () => { everHeld = true; hinted = false; ui.showHint(false); ui.message(null); };
   window.addEventListener('keydown', (e) => {
     if (e.code !== 'Space' || (e.target && e.target.closest && e.target.closest('a, button'))) return;
     e.preventDefault();
@@ -358,6 +360,9 @@ function start() {
     wall += dt;
     update(dt); render();
     if (!everHeld && !hinted && wall > CONFIG.hintAfter) { hinted = true; ui.showHint(true); }
+    // if nobody has held for a while, remind them how
+    if (holding()) lastHeld = wall;
+    else if (everHeld && !hinted && wall - lastHeld > CONFIG.hintAgain) { hinted = true; ui.showHint(true); }
     perf.frames++;
     if (now - perf.since >= 1000) {
       perf.fps = (perf.frames * 1000) / (now - perf.since); perf.frames = 0; perf.since = now;

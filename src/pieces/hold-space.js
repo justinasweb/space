@@ -1531,7 +1531,7 @@ function start() {
   function press() {
     if (J.held) return;
     J.held = true; J.completing = false;
-    if (!J.everHeld) { J.everHeld = true; ui.showHint(false); }
+    J.everHeld = true; hinted = false; ui.showHint(false);
     ui.message(null);
     if (lockedSpeed !== null) return;
     // Carry on from whatever we were doing, at the same throttle; swing off whatever is ahead.
@@ -1774,6 +1774,8 @@ function start() {
     U.time.value = wall;
     update(dt, wall); render();
     if (!J.everHeld && wall > 2 && !hinted) { hinted = true; ui.showHint(true); }
+    if (J.held) lastHeld = wall;                 // nobody has held for a while: remind them how
+    else if (J.everHeld && !hinted && wall - lastHeld > 25) { hinted = true; ui.showHint(true); }
 
     perf.frames++;                               // adaptive quality: cut render scale before anything else suffers
     if (now - perf.since >= 1000) {
@@ -1782,7 +1784,7 @@ function start() {
       if (now > perf.graceUntil && perf.fps < Q.minFps && qualityLevel < Q.ladder.length - 1) { setQuality(qualityLevel + 1); perf.graceUntil = now + 2000; }
     }
   }
-  let hinted = false;
+  let hinted = false, lastHeld = 0;
   function play() { if (running) return; running = true; last = performance.now(); perf.since = last; perf.frames = 0; perf.graceUntil = last + 2500; raf = requestAnimationFrame(tick); }
   function stop() { running = false; cancelAnimationFrame(raf); }
   document.addEventListener('visibilitychange', () => { if (document.hidden) { holding.key = false; holding.pointers.clear(); sync(); stop(); } else play(); });

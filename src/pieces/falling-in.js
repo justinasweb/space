@@ -49,6 +49,7 @@ const CONFIG = {
   message: { show: 6.0 },
   ending: { fade: 2.2, dark: 3.5 },   // seconds to fade at the horizon, and to stay dark before the next fall
   hintAfter: 2.0,
+  hintAgain: 25,                      // seconds without holding before the hint comes back
   quality: {
     steps: { desktop: 420, mobile: 260 },         // max integration steps per pixel
     scale: { desktop: 0.8, mobile: 0.6 },
@@ -287,7 +288,8 @@ function start() {
   const held = { key: false, pointers: new Set() };
   const holding = () => held.key || held.pointers.size > 0;
   let everHeld = false;
-  const onPress = () => { if (!everHeld) { everHeld = true; ui.showHint(false); } ui.message(null); };
+  let lastHeld = 0;
+  const onPress = () => { everHeld = true; hinted = false; ui.showHint(false); ui.message(null); };
   window.addEventListener('keydown', (e) => {
     if (e.code !== 'Space' || (e.target && e.target.closest && e.target.closest('a, button'))) return;
     e.preventDefault();
@@ -375,6 +377,9 @@ function start() {
     wall += dt;
     update(dt); render();
     if (!everHeld && !hinted && wall > CONFIG.hintAfter) { hinted = true; ui.showHint(true); }
+    // if nobody has held for a while, remind them how
+    if (holding()) lastHeld = wall;
+    else if (everHeld && !hinted && wall - lastHeld > CONFIG.hintAgain) { hinted = true; ui.showHint(true); }
     perf.frames++;
     if (now - perf.since >= 1000) {
       perf.fps = (perf.frames * 1000) / (now - perf.since); perf.frames = 0; perf.since = now;
