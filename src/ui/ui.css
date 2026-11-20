@@ -117,7 +117,9 @@
 .ui-centre {
   position: absolute; left: 0; right: 0; bottom: max(30px, env(safe-area-inset-bottom));
   display: grid; justify-items: center; pointer-events: none;
-  font-size: var(--ui-size-centre); line-height: 1; text-transform: lowercase;
+  padding: 0 max(var(--ui-edge), env(safe-area-inset-left)) 0 max(var(--ui-edge), env(safe-area-inset-right));
+  font-size: var(--ui-size-centre); line-height: 1.5; text-transform: lowercase; text-align: center;
+  text-wrap: balance;    /* a long line breaks into two even lines on phones */
 }
 .ui-hint, .ui-message { grid-area: 1 / 1; opacity: 0; transition: opacity var(--ui-hint-fade) ease; user-select: none; -webkit-user-select: none; }
 .ui-hint {

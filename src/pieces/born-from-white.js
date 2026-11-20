@@ -24,7 +24,7 @@ const ui = mountUI({ id: 'born-from-white', tone: 'light', hidden: true });
 const CONFIG = {
   // ---- stage timings (seconds of piece time T) ----
   time: {
-    startAt: 2.5,          // the piece opens this far in (0 = the full, slow opening on plain white)
+    startAt: 3.5,          // the piece opens this far in (0 = the full, slow opening on plain white)
     shimmerStart: 1.5,     // the white starts to breathe
     captureStart: 9.0,     // gaps start to open, dust starts flowing into clumps
     ignition: 17.0,        // the star switches on
