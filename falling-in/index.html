@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en" data-theme="space">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>Falling in · Justinas</title>
+<meta name="description" content="Hold to fall towards a black hole, as the sky bends and your time slows. A WebGL piece by Justinas.">
+<meta property="og:title" content="Falling in · Justinas">
+<meta property="og:description" content="Hold to fall towards a black hole, as the sky bends and your time slows. A WebGL piece by Justinas.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://justinas.space/falling-in/">
+<meta property="og:image" content="https://justinas.space/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A glowing spiral of gas and dust turning around a newborn star">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  html, body { margin: 0; height: 100%; background: #000000; overflow: hidden; }
+  body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+
+  #stage {
+    position: fixed; inset: 0; width: 100%; height: 100%; display: block; opacity: 0;
+    transition: opacity 2.4s ease;
+    touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent; outline: none;
+  }
+  body.live #stage { opacity: 1; }
+
+  /* No WebGL: a still of the hole and its glowing disk. */
+  #fallback {
+    position: fixed; inset: 0; opacity: 0; pointer-events: none; transition: opacity 3s ease;
+    background:
+      radial-gradient(circle at 50% 50%, #000 0 9vmin, transparent 9.6vmin),
+      radial-gradient(ellipse 40vmin 5vmin at 50% 50%, rgba(255, 190, 120, 0.55), rgba(255, 140, 60, 0.12) 60%, transparent 75%),
+      radial-gradient(circle at 50% 50%, transparent 0 9.5vmin, rgba(255, 200, 140, 0.35) 10.5vmin, transparent 14vmin),
+      #000;
+  }
+  body.fallback #stage { display: none; }
+  body.fallback #fallback { opacity: 1; }
+</style>
+<script src="https://cdn.usefathom.com/script.js" data-site="MWFBYJRE" defer></script>
+</head>
+<body>
+<canvas id="stage" aria-hidden="true"></canvas>
+<div id="fallback" aria-hidden="true"></div>
+<noscript><style>#fallback { opacity: 1 }</style></noscript>
+<!-- If the module itself cannot load (very old browser), still fall back gracefully. -->
+<script nomodule>document.body.className += ' fallback';</script>
+<script type="module" src="/src/pieces/falling-in.js"></script>
+</body>
+</html>
