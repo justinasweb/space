@@ -49,4 +49,13 @@ export const experiences = [
     description: 'Fall towards a black hole as the sky bends and your time slows.',
     about: 'The light in every pixel is traced along its bent path around the hole. Hold space, the mouse or a finger to fall faster; near the end, look back up at the shrinking sky.',
   },
+  {
+    id: 'giant',
+    title: 'Giant',
+    path: '/giant/',
+    theme: 'space',
+    collection: 'Space',
+    description: 'A gas giant up close: cloud bands, storms and rings.',
+    about: 'A gas giant drifts in front of you, its winds pulling the clouds into bands and storms. Hold space, the mouse or a finger to speed up time.',
+  },
 ];
