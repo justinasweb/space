@@ -22,7 +22,7 @@ Old files in `assets/` can be deleted now and then; their names change with ever
 | Path | What it is |
 | --- | --- |
 | `index.html` | the root page: Born from white |
-| `cursor-light/`, `hold-space/`, `aurora/`, `falling-in/` (each an `index.html`) | the other pieces |
+| `cursor-light/`, `hold-space/`, `aurora/`, `falling-in/`, `giant/` (each an `index.html`) | the other pieces |
 | `src/pieces/*.js` | each piece's code (its CONFIG block is at the top) |
 | `src/experiences.js` | the list of pieces: order, titles, descriptions, about text |
 | `src/site.js` | your name and the X / GitHub links |
